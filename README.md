@@ -24,9 +24,9 @@
 ## Architecture (above) Trade-offs
 | Design Dimension | Selected Approach | Alternatives Considered | Trade-off Analysis |
 | :------- | :------: | :-------: | ------- |
-| Slot Generation | Dynamic Calculation | Static Pre-generation | `Pros`: Dynamic logic allows immediate adjustment of doctor working hours without retroactively editing rows. Decreases DB footprint. `Cons`: Marginally higher CPU load on query endpoints (negated by Redis caching if needed in future expansion). |
-| Concurrency Control | Database Lock (FOR UPDATE) | Go-Mutex / Distributed Locks | `Pros`: Robust and simple. Ensures consistency across multiple instances of the backend container without needing Redis Redlock orchestration. `Cons`: Holds open transactional resources. For scale, locks are restricted exclusively to individual doctor scopes. |
-| Data Integrity | DB-level Constraints | Application-level validation only | `Pros`: Guarantees absolute data integrity even if another microservice accesses the database or manual maintenance queries run. `Cons`: Tight coupling between system rules and database engine schema. |
+| Slot Generation | Dynamic Calculation | Static Pre-generation | `Pros`: Dynamic logic allows immediate adjustment of doctor working hours without retroactively editing rows. Decreases DB footprint.<br>`Cons`: Marginally higher CPU load on query endpoints (negated by Redis caching if needed in future expansion). |
+| Concurrency Control | Database Lock (FOR UPDATE) | Go-Mutex / Distributed Locks | `Pros`: Robust and simple. Ensures consistency across multiple instances of the backend container without needing Redis Redlock orchestration.<br>`Cons`: Holds open transactional resources. For scale, locks are restricted exclusively to individual doctor scopes. |
+| Data Integrity | DB-level Constraints | Application-level validation only | `Pros`: Guarantees absolute data integrity even if another microservice accesses the database or manual maintenance queries run.<br>`Cons`: Tight coupling between system rules and database engine schema. |
 
 ## Local Setup and Deployment Notes
 - **Language Runtime**: Go 1.21+
