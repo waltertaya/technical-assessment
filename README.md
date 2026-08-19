@@ -28,12 +28,136 @@
 | Concurrency Control | Database Lock (FOR UPDATE) | Go-Mutex / Distributed Locks | `Pros`: Robust and simple. Ensures consistency across multiple instances of the backend container without needing Redis Redlock orchestration.<br>`Cons`: Holds open transactional resources. For scale, locks are restricted exclusively to individual doctor scopes. |
 | Data Integrity | DB-level Constraints | Application-level validation only | `Pros`: Guarantees absolute data integrity even if another microservice accesses the database or manual maintenance queries run.<br>`Cons`: Tight coupling between system rules and database engine schema. |
 
-### Local Setup and Deployment Notes
-- **Language Runtime**: Go 1.21+
-- **Framework**: Gin Gonic (*github.com/gin-gonic/gin*)
-- **Database**: PostgreSQL 15+
-- **CI/CD Engine**: Github Actions (config configured under *.github/workflows/deploy.yml*)
-- **Target Cloud Platform**: _
+## Local Setup
+
+### Prerequisites
+
+- Go 1.21+
+- PostgreSQL 15+
+
+### Clone the repository
+
+```bash
+git clone git@github.com:waltertaya/technical-assessment.git
+cd technical-assessment
+```
+
+HTTPS can be used instead if SSH is not configured:
+
+```bash
+git clone https://github.com/waltertaya/technical-assessment.git
+```
+
+### Configure the environment
+
+Copy the example environment file and set the PostgreSQL connection string:
+
+```bash
+cp .env.example .env
+```
+
+Update `.env`:
+
+```env
+DATABASE_URL=postgres://user:password@localhost:5432/database_name?sslmode=disable
+```
+
+Make sure the PostgreSQL database in `DATABASE_URL` already exists. The migration creates the required tables and the `pgcrypto` extension:
+
+```bash
+go run ./internal/migrate
+```
+
+### Run the server
+
+```bash
+go run ./cmd/server
+```
+
+The API listens on `http://localhost:8080`. Verify that it is running:
+
+```bash
+curl http://localhost:8080/api/v1/health
+```
+
+Expected response:
+
+```json
+{"status":"healthy"}
+```
+
+## API Routes
+
+All routes are prefixed with `/api/v1` and accept or return JSON.
+
+| Method | Route | Description |
+| --- | --- | --- |
+| `GET` | `/health` | Check API health |
+| `POST` | `/doctors` | Add a doctor |
+| `POST` | `/doctors/:id/working-hours` | Add a doctor's shift |
+| `POST` | `/patients` | Add a patient |
+| `POST` | `/appointments` | Book a 30-minute appointment |
+| `GET` | `/doctors/:id/availability?date=YYYY-MM-DD` | Get available appointment slots |
+| `PATCH` | `/appointments/:id/cancel` | Cancel an appointment |
+| `PATCH` | `/appointments/:id/reschedule` | Reschedule an appointment |
+
+### Add a doctor
+
+```bash
+curl -X POST http://localhost:8080/api/v1/doctors \
+	-H 'Content-Type: application/json' \
+	-d '{"name":"Dr. Jane Doe","specialty":"Cardiology"}'
+```
+
+### Add a patient
+
+```bash
+curl -X POST http://localhost:8080/api/v1/patients \
+	-H 'Content-Type: application/json' \
+	-d '{"name":"John Smith","email":"john.smith@example.com"}'
+```
+
+### Add a doctor's working hours
+
+`day_of_week` uses `0` for Sunday through `6` for Saturday. Multiple shifts can be added for the same day, which supports breaks during the day. Times use `HH:MM:SS`.
+
+```bash
+curl -X POST http://localhost:8080/api/v1/doctors/DOCTOR_ID/working-hours \
+	-H 'Content-Type: application/json' \
+	-d '{"day_of_week":1,"start_time":"09:00:00","end_time":"17:00:00"}'
+```
+
+### Book an appointment
+
+Appointments are 30 minutes long. The date must be in the future and the requested start time must be in `HH:MM` format.
+
+```bash
+curl -X POST http://localhost:8080/api/v1/appointments \
+	-H 'Content-Type: application/json' \
+	-d '{"doctor_id":"DOCTOR_ID","patient_id":"PATIENT_ID","appointment_date":"2026-09-01","start_time":"09:00"}'
+```
+
+### Check availability
+
+```bash
+curl 'http://localhost:8080/api/v1/doctors/DOCTOR_ID/availability?date=2026-09-01'
+```
+
+### Cancel an appointment
+
+```bash
+curl -X PATCH http://localhost:8080/api/v1/appointments/APPOINTMENT_ID/cancel \
+	-H 'Content-Type: application/json' \
+	-d '{"reason":"Patient requested cancellation"}'
+```
+
+### Reschedule an appointment
+
+```bash
+curl -X PATCH http://localhost:8080/api/v1/appointments/APPOINTMENT_ID/reschedule \
+	-H 'Content-Type: application/json' \
+	-d '{"new_date":"2026-09-02","new_start_time":"10:30"}'
+```
 
 ## Author
 [waltertaya](https://waltertaya.pages.dev/)
