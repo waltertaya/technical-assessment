@@ -17,7 +17,7 @@ type BookAppointmentRequest struct {
 }
 
 // Handles booking logic inside our Gin controller
-func (h *Handler) BookAppointment(c *gin.Context) {
+func BookAppointment(c *gin.Context) {
 	var req BookAppointmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload: " + err.Error()})
