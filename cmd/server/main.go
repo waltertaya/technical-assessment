@@ -2,49 +2,30 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/waltertaya/doctor-appointment/internal/database"
-	"github.com/waltertaya/doctor-appointment/internal/handlers"
 )
 
 func init() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using system environment variables.")
 	}
+
+	database.ConnectDB()
 }
 
 func main() {
 	r := gin.Default()
 
-	connStr := os.Getenv("DATABASE_URL")
-	if connStr == "" {
-		log.Fatal("DATABASE_URL environment variable is not set.")
-	}
-
-	db, err := database.ConnectDB(connStr)
-	if err != nil {
-		log.Fatalf("Database connection failed: %v", err)
-	}
-	defer db.Close()
-
-	if err := database.RunMigrations(db); err != nil {
-		log.Fatalf("Database migrations failed: %v", err)
-	}
-	log.Println("Database migrations completed successfully.")
-
-	// initialize handlers with db connection
-	h := &handlers.Handler{DB: db}
-
-	api := r.Group("/api/v1")
-	{
-		api.POST("/appointments", h.BookAppointment)
-		// api.GET("/doctors/:id/availability", h.GetAvailability)
-		// api.PATCH("/appointments/:id/cancel", h.CancelAppointment)
-		// api.PATCH("/appointments/:id/reschedule", h.RescheduleAppointment)
-	}
+	// api := r.Group("/api/v1")
+	// {
+	// 	api.POST("/appointments", handlers.BookAppointment)
+	// 	// api.GET("/doctors/:id/availability", handlers.GetAvailability)
+	// 	// api.PATCH("/appointments/:id/cancel", handlers.CancelAppointment)
+	// 	// api.PATCH("/appointments/:id/reschedule", handlers.RescheduleAppointment)
+	// }
 
 	// health check endpoint
 	r.GET("/api/v1/health", func(c *gin.Context) {
