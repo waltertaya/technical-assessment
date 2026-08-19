@@ -25,6 +25,15 @@ type BookRequest struct {
 	StartTime       string    `json:"start_time" binding:"required"`
 }
 
+type CancelRequest struct {
+	Reason string `json:"reason" binding:"required"`
+}
+
+type RescheduleRequest struct {
+	NewDate      string `json:"new_date" binding:"required"`
+	NewStartTime string `json:"new_start_time" binding:"required"`
+}
+
 func (h *Handler) BookAppointment(c *gin.Context) {
 	var req BookRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -84,10 +93,6 @@ func (h *Handler) GetAvailability(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"date": dateStr, "available_slots": slots})
 }
 
-type CancelRequest struct {
-	Reason string `json:"reason" binding:"required"`
-}
-
 func (h *Handler) CancelAppointment(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -113,11 +118,6 @@ func (h *Handler) CancelAppointment(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "cancelled", "message": "Appointment cancelled successfully"})
-}
-
-type RescheduleRequest struct {
-	NewDate      string `json:"new_date" binding:"required"`
-	NewStartTime string `json:"new_start_time" binding:"required"`
 }
 
 func (h *Handler) RescheduleAppointment(c *gin.Context) {

@@ -31,6 +31,9 @@ func main() {
 	h := handlers.NewHandler(service.NewBookingService(database.DB))
 	api := r.Group("/api/v1")
 	{
+		api.POST("/doctors", h.CreateDoctor)
+		api.POST("/doctors/:id/working-hours", h.CreateWorkingHours)
+		api.POST("/patients", h.CreatePatient)
 		api.POST("/appointments", h.BookAppointment)
 		api.GET("/doctors/:id/availability", h.GetAvailability)
 		api.PATCH("/appointments/:id/cancel", h.CancelAppointment)
