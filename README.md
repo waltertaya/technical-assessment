@@ -10,12 +10,12 @@
 - *Working Hours (Shift)*: Represents active, non-overlapping daily working shifts for a doctor on specific days of the week. By allowing multiple rows per day of the week, this entity seamlessly accomodates midday breaks.
 - *Appointment*: Represents a 30-minute booking reservation linking a `Patient` and a `Doctor` on a specific calendar date.
 
-[![alt text](<savannah informatics OA - doctor appointment.png>)](https://dbdiagram.io/d/savannah-informatics-OA-doctor-appointment-6a85bacd6440800f52a25235)
+[![alt text](</src/images/savannah informatics OA - doctor appointment.png>)](https://dbdiagram.io/d/savannah-informatics-OA-doctor-appointment-6a85bacd6440800f52a25235)
 
 ## Dynamic Availability Calculation Logic
 - Instead of pre-generating empty time slots in the database (which creates data-synchronization overhead and bloat), the system *calculates slot availability dynamically on-the-fly*.
 
-[![alt text](image.png)](https://lucid.app/lucidchart/1be14c71-1c7a-4cf4-992c-610fe8ce0024/edit?viewport_loc=110%2C-2343%2C1950%2C2396%2C0_0&invitationId=inv_d00e573a-96e4-4b5c-9b1a-99b1afebc5e3)
+[![alt text](/src/images/image.png)](https://lucid.app/lucidchart/1be14c71-1c7a-4cf4-992c-610fe8ce0024/edit?viewport_loc=110%2C-2343%2C1950%2C2396%2C0_0&invitationId=inv_d00e573a-96e4-4b5c-9b1a-99b1afebc5e3)
 
 ## Concurrency Handling & Race Conditions
 - In high-traffic systems (scalability), multiple users might attempt to book the exact same 30-minute slot simultenously. If untreated, this leads to a **double-booking bug**
