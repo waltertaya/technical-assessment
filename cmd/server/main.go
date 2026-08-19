@@ -7,6 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/waltertaya/doctor-appointment/internal/database"
+	"github.com/waltertaya/doctor-appointment/internal/handlers"
+	"github.com/waltertaya/doctor-appointment/internal/service"
 )
 
 func init() {
@@ -26,13 +28,14 @@ func main() {
 		AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization"},
 	}))
 
-	// api := r.Group("/api/v1")
-	// {
-	// 	api.POST("/appointments", handlers.BookAppointment)
-	// 	// api.GET("/doctors/:id/availability", handlers.GetAvailability)
-	// 	// api.PATCH("/appointments/:id/cancel", handlers.CancelAppointment)
-	// 	// api.PATCH("/appointments/:id/reschedule", handlers.RescheduleAppointment)
-	// }
+	h := handlers.NewHandler(service.NewBookingService(database.DB))
+	api := r.Group("/api/v1")
+	{
+		api.POST("/appointments", h.BookAppointment)
+		api.GET("/doctors/:id/availability", h.GetAvailability)
+		api.PATCH("/appointments/:id/cancel", h.CancelAppointment)
+		api.PATCH("/appointments/:id/reschedule", h.RescheduleAppointment)
+	}
 
 	// health check endpoint
 	r.GET("/api/v1/health", func(c *gin.Context) {
