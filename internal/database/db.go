@@ -11,15 +11,27 @@ import (
 
 var DB *gorm.DB
 
+var (
+	openPostgres = func(dsn string) (*gorm.DB, error) {
+		return gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	}
+	logFatal = func(v ...any) {
+		log.Fatal(v...)
+	}
+	logPrintln = func(v ...any) {
+		log.Println(v...)
+	}
+)
+
 // ConnectDB establishes and pings our connection pool
 func ConnectDB() {
 	var err error
 
 	dsn := os.Getenv("DATABASE_URL")
-	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	DB, err = openPostgres(dsn)
 	if err != nil {
-		log.Fatal(fmt.Errorf("failed to open connection pool: %w", err))
+		logFatal(fmt.Errorf("failed to open connection pool: %w", err))
 	}
 
-	log.Println("Successfully connected to PostgreSQL database!")
+	logPrintln("Successfully connected to PostgreSQL database!")
 }
