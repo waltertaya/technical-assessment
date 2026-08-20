@@ -1,0 +1,113 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_NAME: doctor-appointment
+  CONTAINER_NAME: doctor-appointment
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Run vet
+        run: go vet ./...
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build --tag "${IMAGE_NAME}:${GITHUB_SHA}" .
+
+      - name: Export image
+        run: docker save "${IMAGE_NAME}:${GITHUB_SHA}" | gzip > image.tar.gz
+
+      - name: Configure SSH
+        env:
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Upload image
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          scp -i ~/.ssh/deploy_key -P "${VPS_PORT:-22}" \
+            image.tar.gz "${VPS_USER}@${VPS_HOST}:/tmp/${IMAGE_NAME}-${GITHUB_SHA}.tar.gz"
+
+      - name: Deploy on VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          APP_DIR: ${{ secrets.VPS_APP_DIR }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "${VPS_PORT:-22}" "${VPS_USER}@${VPS_HOST}" \
+            bash -s -- "${IMAGE_NAME}" "${CONTAINER_NAME}" "${GITHUB_SHA}" "${APP_DIR:-/opt/doctor-appointment}" <<'REMOTE'
+          set -Eeuo pipefail
+
+          image_name="$1"
+          container_name="$2"
+          image_tag="$3"
+          app_dir="$4"
+          image_archive="/tmp/${image_name}-${image_tag}.tar.gz"
+          env_file="${app_dir}/.env"
+          image="${image_name}:${image_tag}"
+
+          test -f "$env_file" || {
+            echo "Missing ${env_file}; create it on the VPS with DATABASE_URL set." >&2
+            exit 1
+          }
+
+          docker load --input "$image_archive"
+          docker run --rm --env-file "$env_file" "$image" /app/migrate
+          docker rm -f "$container_name" 2>/dev/null || true
+          docker run --detach \
+            --name "$container_name" \
+            --restart unless-stopped \
+            --env-file "$env_file" \
+            --publish 127.0.0.1:8080:8080 \
+            "$image"
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8080/api/v1/health >/dev/null; then
+              rm -f "$image_archive"
+              docker image prune --force
+              exit 0
+            fi
+            sleep 2
+          done
+
+          docker logs "$container_name" || true
+          exit 1
+          REMOTE
