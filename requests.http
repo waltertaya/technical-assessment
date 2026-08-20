@@ -1,0 +1,88 @@
+@baseUrl = http://localhost:8080/api/v1
+@appointmentDate = 2026-09-01
+@rescheduledDate = 2026-09-01
+@appointmentId = 89dc029e-7560-4162-8b38-dff4a26ecc35
+@doctorId = a7b2a220-a1a1-4e5d-8b36-7e5fd80f82d6
+@patientId = 2c453fcc-9d7c-4a4d-a2bd-07ad45a3a046
+
+### Health check
+GET {{baseUrl}}/health
+
+### Create doctor
+# @name createDoctor
+POST {{baseUrl}}/doctors
+Content-Type: application/json
+
+{
+  "name": "Dr. Jane Doe",
+  "specialty": "Cardiology"
+}
+
+> {%
+  client.global.set("doctorId", response.body.id);
+%}
+
+### Create patient
+# @name createPatient
+POST {{baseUrl}}/patients
+Content-Type: application/json
+
+{
+  "name": "John Smith",
+  "email": "john.smith@example.com"
+}
+
+> {%
+  client.global.set("patientId", response.body.id);
+%}
+
+### Add doctor's Tuesday morning hours
+POST {{baseUrl}}/doctors/{{doctorId}}/working-hours
+Content-Type: application/json
+
+{
+  "day_of_week": 2,
+  "start_time": "09:00:00",
+  "end_time": "12:00:00"
+}
+
+### Add doctor's Tuesday afternoon hours
+POST {{baseUrl}}/doctors/{{doctorId}}/working-hours
+Content-Type: application/json
+
+{
+  "day_of_week": 2,
+  "start_time": "13:00:00",
+  "end_time": "17:00:00"
+}
+
+### Check doctor availability
+GET {{baseUrl}}/doctors/{{doctorId}}/availability?date={{appointmentDate}}
+
+### Book an appointment
+POST {{baseUrl}}/appointments
+Content-Type: application/json
+
+{
+  "doctor_id": "{{doctorId}}",
+  "patient_id": "{{patientId}}",
+  "appointment_date": "{{appointmentDate}}",
+  "start_time": "09:00"
+}
+
+### Reschedule the appointment
+PATCH {{baseUrl}}/appointments/{{appointmentId}}/reschedule
+Content-Type: application/json
+
+{
+  "new_date": "{{rescheduledDate}}",
+  "new_start_time": "10:00"
+}
+
+### Cancel the appointment
+PATCH {{baseUrl}}/appointments/{{appointmentId}}/cancel
+Content-Type: application/json
+
+{
+  "reason": "Patient requested cancellation"
+}

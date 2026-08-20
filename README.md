@@ -1,6 +1,4 @@
 # Doctor's Appointment
-- Savannah Informatics Backend Developer Take-Home Assessment
-- The system is implemented in *Go* using the *Gin Gonic* web framework and *PostgreSQL* as the persistent datastore.
 - The architecture is designed to be highly maintainable, prevent booking conflicts (race conditions), and support real-world clinic constraints such as irregular shift structures and midday breaks.
 
 ## System Design
@@ -145,63 +143,9 @@ All routes are prefixed with `/api/v1` and accept or return JSON.
 | `PATCH` | `/appointments/:id/cancel` | Cancel an appointment |
 | `PATCH` | `/appointments/:id/reschedule` | Reschedule an appointment |
 
-### Add a doctor
+### Test with REST Client
 
-```bash
-curl -X POST http://localhost:8080/api/v1/doctors \
-	-H 'Content-Type: application/json' \
-	-d '{"name":"Dr. Jane Doe","specialty":"Cardiology"}'
-```
-
-### Add a patient
-
-```bash
-curl -X POST http://localhost:8080/api/v1/patients \
-	-H 'Content-Type: application/json' \
-	-d '{"name":"John Smith","email":"john.smith@example.com"}'
-```
-
-### Add a doctor's working hours
-
-`day_of_week` uses `0` for Sunday through `6` for Saturday. Multiple shifts can be added for the same day, which supports breaks during the day. Times use `HH:MM:SS`.
-
-```bash
-curl -X POST http://localhost:8080/api/v1/doctors/DOCTOR_ID/working-hours \
-	-H 'Content-Type: application/json' \
-	-d '{"day_of_week":1,"start_time":"09:00:00","end_time":"17:00:00"}'
-```
-
-### Book an appointment
-
-Appointments are 30 minutes long. The date must be in the future and the requested start time must be in `HH:MM` format.
-
-```bash
-curl -X POST http://localhost:8080/api/v1/appointments \
-	-H 'Content-Type: application/json' \
-	-d '{"doctor_id":"DOCTOR_ID","patient_id":"PATIENT_ID","appointment_date":"2026-09-01","start_time":"09:00"}'
-```
-
-### Check availability
-
-```bash
-curl 'http://localhost:8080/api/v1/doctors/DOCTOR_ID/availability?date=2026-09-01'
-```
-
-### Cancel an appointment
-
-```bash
-curl -X PATCH http://localhost:8080/api/v1/appointments/APPOINTMENT_ID/cancel \
-	-H 'Content-Type: application/json' \
-	-d '{"reason":"Patient requested cancellation"}'
-```
-
-### Reschedule an appointment
-
-```bash
-curl -X PATCH http://localhost:8080/api/v1/appointments/APPOINTMENT_ID/reschedule \
-	-H 'Content-Type: application/json' \
-	-d '{"new_date":"2026-09-02","new_start_time":"10:30"}'
-```
+Install the VS Code [REST Client extension](https://marketplace.visualstudio.com/items?itemName=humao.rest-client), start the API, and open [`requests.http`](requests.http).
 
 ## Author
 [waltertaya](https://waltertaya.pages.dev/)
