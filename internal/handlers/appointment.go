@@ -40,7 +40,10 @@ func (h *Handler) BookAppointment(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input: " + err.Error()})
 		return
 	}
-	if _, err := time.Parse("2006-01-02", req.AppointmentDate); err != nil {
+	var err error
+	var appointmentDate time.Time
+	appointmentDate, err = time.Parse("2006-01-02", req.AppointmentDate)
+	if err != nil || !appointmentDate.After(time.Now()) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Appointment date must be in the future"})
 		return
 	}
@@ -49,7 +52,7 @@ func (h *Handler) BookAppointment(c *gin.Context) {
 		return
 	}
 
-	err := h.Booking.Book(c.Request.Context(), service.BookInput{
+	err = h.Booking.Book(c.Request.Context(), service.BookInput{
 		DoctorID:        req.DoctorID,
 		PatientID:       req.PatientID,
 		AppointmentDate: req.AppointmentDate,
@@ -131,7 +134,9 @@ func (h *Handler) RescheduleAppointment(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload: " + err.Error()})
 		return
 	}
-	if _, err := time.Parse("2006-01-02", req.NewDate); err != nil {
+	var newDate time.Time
+	newDate, err = time.Parse("2006-01-02", req.NewDate)
+	if err != nil || !newDate.After(time.Now()) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "New appointment date must be in the future"})
 		return
 	}

@@ -68,6 +68,25 @@ Make sure the PostgreSQL database in `DATABASE_URL` already exists. The migratio
 go run ./internal/migrate
 ```
 
+### Run tests
+
+Run all Go tests from the project root:
+
+```bash
+go test ./...
+```
+
+For verbose output, coverage, race detection, or static analysis:
+
+```bash
+go test -v ./...
+go test -cover ./...
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out
+go test -race ./...
+go vet ./...
+```
+
 ### Run the server
 
 ```bash

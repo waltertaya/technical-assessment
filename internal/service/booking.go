@@ -99,23 +99,31 @@ func (s *BookingService) Availability(ctx context.Context, doctorID uuid.UUID, d
 
 	var availableSlots []string
 	for _, shift := range shifts {
-		curr, err := time.Parse("15:04:05", shift.StartTime)
-		if err != nil {
-			continue
-		}
-		limit, err := time.Parse("15:04:05", shift.EndTime)
-		if err != nil {
-			continue
-		}
-		for curr.Add(30*time.Minute).Before(limit) || curr.Add(30*time.Minute).Equal(limit) {
-			slot := curr.Format("15:04")
+		for _, slot := range slotsForShift(shift.StartTime, shift.EndTime) {
 			if !bookedSlots[slot] {
 				availableSlots = append(availableSlots, slot)
 			}
-			curr = curr.Add(30 * time.Minute)
 		}
 	}
 	return availableSlots, nil
+}
+
+func slotsForShift(startTime, endTime string) []string {
+	curr, err := time.Parse("15:04:05", startTime)
+	if err != nil {
+		return nil
+	}
+	limit, err := time.Parse("15:04:05", endTime)
+	if err != nil {
+		return nil
+	}
+
+	var slots []string
+	for curr.Add(30*time.Minute).Before(limit) || curr.Add(30*time.Minute).Equal(limit) {
+		slots = append(slots, curr.Format("15:04"))
+		curr = curr.Add(30 * time.Minute)
+	}
+	return slots
 }
 
 func (s *BookingService) Cancel(ctx context.Context, id uuid.UUID) error {
