@@ -15,6 +15,7 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
+
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -35,6 +36,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     environment: production
+
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -51,8 +53,10 @@ jobs:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
         run: |
           install -d -m 700 ~/.ssh
+
           printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+
           printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
@@ -62,8 +66,10 @@ jobs:
           VPS_PORT: ${{ secrets.VPS_PORT }}
           VPS_USER: ${{ secrets.VPS_USER }}
         run: |
-          scp -i ~/.ssh/deploy_key -P "${VPS_PORT:-22}" \
-            image.tar.gz "${VPS_USER}@${VPS_HOST}:/tmp/${IMAGE_NAME}-${GITHUB_SHA}.tar.gz"
+          scp -i ~/.ssh/deploy_key \
+            -P "${VPS_PORT:-22}" \
+            image.tar.gz \
+            "${VPS_USER}@${VPS_HOST}:/tmp/${IMAGE_NAME}-${GITHUB_SHA}.tar.gz"
 
       - name: Deploy on VPS
         env:
@@ -72,26 +78,50 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           APP_DIR: ${{ secrets.VPS_APP_DIR }}
         run: |
-          ssh -i ~/.ssh/deploy_key -p "${VPS_PORT:-22}" "${VPS_USER}@${VPS_HOST}" \
-            bash -s -- "${IMAGE_NAME}" "${CONTAINER_NAME}" "${GITHUB_SHA}" "${APP_DIR:-/opt/doctor-appointment}" <<'REMOTE'
+          ssh -i ~/.ssh/deploy_key \
+            -p "${VPS_PORT:-22}" \
+            "${VPS_USER}@${VPS_HOST}" \
+            bash -s -- \
+            "${IMAGE_NAME}" \
+            "${CONTAINER_NAME}" \
+            "${GITHUB_SHA}" \
+            "${APP_DIR:-/opt/doctor-appointment}" <<'REMOTE'
+
           set -Eeuo pipefail
 
           image_name="$1"
           container_name="$2"
           image_tag="$3"
           app_dir="$4"
+
           image_archive="/tmp/${image_name}-${image_tag}.tar.gz"
           env_file="${app_dir}/.env"
           image="${image_name}:${image_tag}"
 
+          # Verify production environment file exists
           test -f "$env_file" || {
-            echo "Missing ${env_file}; create it on the VPS with DATABASE_URL set." >&2
+            echo "ERROR: Missing ${env_file}" >&2
+            echo "Create the production .env file on the VPS." >&2
             exit 1
           }
 
+          # Load Docker image
+          echo "Loading Docker image..."
           docker load --input "$image_archive"
-          docker run --rm --env-file "$env_file" "$image" /app/migrate
+
+          # Run database migrations
+          echo "Running database migrations..."
+          docker run --rm \
+            --env-file "$env_file" \
+            --entrypoint /app/migrate \
+            "$image"
+
+          # Remove previous container
+          echo "Removing previous container..."
           docker rm -f "$container_name" 2>/dev/null || true
+
+          # Start new container
+          echo "Starting new container..."
           docker run --detach \
             --name "$container_name" \
             --restart unless-stopped \
@@ -99,15 +129,40 @@ jobs:
             --publish 127.0.0.1:8080:8080 \
             "$image"
 
+          # Wait for application health check
+          echo "Waiting for application to become healthy..."
+
           for attempt in $(seq 1 30); do
-            if curl --fail --silent http://127.0.0.1:8080/api/v1/health >/dev/null; then
+            if curl \
+              --fail \
+              --silent \
+              --show-error \
+              --max-time 5 \
+              http://127.0.0.1:8080/api/v1/health >/dev/null; then
+
+              echo "Application is healthy."
+
               rm -f "$image_archive"
+
               docker image prune --force
+
               exit 0
             fi
+
+            echo "Health check attempt ${attempt}/30 failed. Retrying..."
             sleep 2
           done
 
+          # Health check failed
+          echo "ERROR: Application failed health check." >&2
+
+          echo "Docker container status:" >&2
+          docker ps -a --filter "name=${container_name}" >&2 || true
+
+          echo "Docker container logs:" >&2
           docker logs "$container_name" || true
+
           exit 1
+
           REMOTE
+          
