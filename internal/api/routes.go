@@ -1,7 +1,10 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
+	"github.com/waltertaya/doctor-appointment/internal/docs"
 	"github.com/waltertaya/doctor-appointment/internal/handlers"
 )
 
@@ -19,6 +22,9 @@ func SetupRoutes(h *handlers.Handler) *gin.Engine {
 		api.PATCH("/appointments/:id/reschedule", h.RescheduleAppointment)
 		api.GET("/health", func(c *gin.Context) {
 			c.JSON(200, gin.H{"status": "healthy"})
+		})
+		api.GET("/doc-test", func(c *gin.Context) {
+			c.FileFromFS("api.html", http.FS(docs.APIHTML))
 		})
 	}
 

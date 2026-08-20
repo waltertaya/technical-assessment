@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Appointment API</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0e0f11; --panel:#17181b; --line:#2a2b2f;
+    --text:#e7e7e7; --dim:#8a8d93;
+    --get:#4fa3ff; --post:#4fd18b; --patch:#f2b84b;
+    --accent:#e7e7e7; --mono:"SFMono-Regular",Consolas,Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:14px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;}
+  header{padding:28px 24px 16px;border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 4px;font-size:18px;font-weight:600}
+  header p{margin:0;color:var(--dim);font-size:13px}
+  main{display:grid;grid-template-columns:280px 1fr;min-height:calc(100vh - 76px)}
+  nav{border-right:1px solid var(--line);padding:12px}
+  nav button{
+    display:flex;gap:8px;align-items:center;width:100%;text-align:left;
+    background:none;border:0;color:var(--text);padding:8px 10px;border-radius:6px;
+    cursor:pointer;font:13px var(--mono);}
+  nav button:hover{background:var(--panel)}
+  nav button.active{background:var(--panel);outline:1px solid var(--line)}
+  .m{font-weight:700;font-size:11px;width:40px;flex:none}
+  .m.GET{color:var(--get)} .m.POST{color:var(--post)} .m.PATCH{color:var(--patch)}
+  section{padding:24px}
+  .row{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+  .row .m{font-size:12px}
+  .path{font-family:var(--mono);color:var(--dim);word-break:break-all}
+  label{display:block;font-size:12px;color:var(--dim);margin:12px 0 4px}
+  input,textarea{
+    width:100%;background:var(--panel);border:1px solid var(--line);color:var(--text);
+    padding:8px 10px;border-radius:6px;font:13px var(--mono);}
+  textarea{min-height:110px;resize:vertical}
+  button.send{
+    margin-top:16px;background:var(--text);color:var(--bg);border:0;
+    padding:9px 18px;border-radius:6px;font-weight:600;cursor:pointer}
+  button.send:hover{opacity:.85}
+  pre{
+    margin-top:18px;background:var(--panel);border:1px solid var(--line);
+    border-radius:6px;padding:12px;font:12px var(--mono);white-space:pre-wrap;
+    word-break:break-all;max-height:400px;overflow:auto}
+  .status{margin-top:14px;font:12px var(--mono);color:var(--dim)}
+  .status.ok{color:var(--post)} .status.err{color:#f26666}
+</style>
+</head>
+<body>
+<header>
+  <h1>Appointment API</h1>
+  <p>Doctor, patient &amp; appointment scheduling — reference &amp; tester</p>
+</header>
+<main>
+  <nav id="nav"></nav>
+  <section id="panel"></section>
+</main>
+
+<script>
+const endpoints = [
+  { id:"health", method:"GET", path:"/health", body:null },
+  { id:"createDoctor", method:"POST", path:"/doctors",
+    body:{ name:"Dr. Jane Doe", specialty:"Cardiology" } },
+  { id:"createPatient", method:"POST", path:"/patients",
+    body:{ name:"John Smith", email:"john.smith@example.com" } },
+  { id:"addWorkingHours", method:"POST", path:"/doctors/{{doctorId}}/working-hours",
+    body:{ day_of_week:2, start_time:"09:00:00", end_time:"12:00:00" } },
+  { id:"availability", method:"GET", path:"/doctors/{{doctorId}}/availability?date={{appointmentDate}}",
+    body:null },
+  { id:"bookAppointment", method:"POST", path:"/appointments",
+    body:{ doctor_id:"{{doctorId}}", patient_id:"{{patientId}}",
+           appointment_date:"{{appointmentDate}}", start_time:"09:00" } },
+  { id:"reschedule", method:"PATCH", path:"/appointments/{{appointmentId}}/reschedule",
+    body:{ new_date:"{{rescheduledDate}}", new_start_time:"10:00" } },
+  { id:"cancel", method:"PATCH", path:"/appointments/{{appointmentId}}/cancel",
+    body:{ reason:"Patient requested cancellation" } },
+];
+
+const vars = {
+  baseUrl:"http://localhost:8080/api/v1",
+  appointmentDate:"2026-09-01",
+  rescheduledDate:"2026-09-01",
+  appointmentId:"89dc029e-7560-4162-8b38-dff4a26ecc35",
+  doctorId:"a7b2a220-a1a1-4e5d-8b36-7e5fd80f82d6",
+  patientId:"2c453fcc-9d7c-4a4d-a2bd-07ad45a3a046",
+};
+
+const nav = document.getElementById("nav");
+const panel = document.getElementById("panel");
+let active = endpoints[0].id;
+
+function fill(str){
+  return str.replace(/{{(.*?)}}/g, (_, k) => vars[k.trim()] ?? "");
+}
+
+function renderNav(){
+  nav.innerHTML = "";
+  endpoints.forEach(ep => {
+    const b = document.createElement("button");
+    b.className = ep.id === active ? "active" : "";
+    b.innerHTML = `<span class="m ${ep.method}">${ep.method}</span><span>${ep.id}</span>`;
+    b.onclick = () => { active = ep.id; render(); };
+    nav.appendChild(b);
+  });
+}
+
+function render(){
+  renderNav();
+  const ep = endpoints.find(e => e.id === active);
+  panel.innerHTML = `
+    <div class="row"><span class="m ${ep.method}">${ep.method}</span>
+      <span class="path">${ep.path}</span></div>
+    <label>Base URL</label>
+    <input id="baseUrl" value="${vars.baseUrl}">
+    ${ep.body ? `<label>Body (JSON)</label><textarea id="body">${JSON.stringify(fillObj(ep.body), null, 2)}</textarea>` : ""}
+    <button class="send" id="send">Send</button>
+    <div class="status" id="status"></div>
+    <pre id="out" style="display:none"></pre>
+  `;
+  document.getElementById("send").onclick = () => sendRequest(ep);
+}
+
+function fillObj(obj){
+  const out = {};
+  for (const k in obj){
+    const v = obj[k];
+    out[k] = typeof v === "string" ? fill(v) : v;
+  }
+  return out;
+}
+
+async function sendRequest(ep){
+  const baseUrl = document.getElementById("baseUrl").value;
+  const path = fill(ep.path);
+  const status = document.getElementById("status");
+  const out = document.getElementById("out");
+  status.textContent = "Sending…";
+  status.className = "status";
+  out.style.display = "none";
+
+  const opts = { method: ep.method, headers: {} };
+  if (ep.body){
+    opts.headers["Content-Type"] = "application/json";
+    opts.body = document.getElementById("body").value;
+  }
+
+  try{
+    const res = await fetch(baseUrl + path, opts);
+    const text = await res.text();
+    status.textContent = `${res.status} ${res.statusText}`;
+    status.className = "status " + (res.ok ? "ok" : "err");
+    out.style.display = "block";
+    try { out.textContent = JSON.stringify(JSON.parse(text), null, 2); }
+    catch { out.textContent = text || "(empty response)"; }
+  }catch(err){
+    status.textContent = "Request failed";
+    status.className = "status err";
+    out.style.display = "block";
+    out.textContent = String(err);
+  }
+}
+
+render();
+</script>
+</body>
+</html>
