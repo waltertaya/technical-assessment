@@ -1,0 +1,12 @@
+.git
+.github
+.env
+.env.*
+coverage.out
+tmp
+*.log
+
+Dockerfile
+.dockerignore
+
+src/images

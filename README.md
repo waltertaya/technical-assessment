@@ -105,6 +105,31 @@ Expected response:
 {"status":"healthy"}
 ```
 
+### Run with Docker
+
+Build the image from the project root:
+
+```bash
+docker build -t doctor-appointment .
+```
+
+Run the database migration before starting the application:
+
+```bash
+go run ./internal/migrate
+```
+
+Start the container with the environment variables from `.env`:
+
+```bash
+docker run --rm --name doctor-appointment \
+	--env-file .env \
+	-p 8080:8080 \
+	doctor-appointment
+```
+
+The API is available at `http://localhost:8080`. When PostgreSQL runs outside the container, make sure `DATABASE_URL` uses a host reachable from Docker rather than `localhost`.
+
 ## API Routes
 
 All routes are prefixed with `/api/v1` and accept or return JSON.
